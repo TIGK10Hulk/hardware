@@ -3,7 +3,6 @@
 #include <MeAuriga.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
-#include "Bluetooth.h"
 
 // DECLARATIONS
   MeBuzzer buzzer;
@@ -12,14 +11,13 @@
   MeEncoderOnBoard Encoder_1(SLOT1);
   MeEncoderOnBoard Encoder_2(SLOT2);
   MeEncoderMotor encoders[2];
+  MeBluetooth bluetooth(PORT_3);
 
 // FUNCTIONS
   void isr_process_encoder1(void);
   void isr_process_encoder2(void);
   void Forward(void);
   void Backward(void);
-  void BackwardAndTurnLeft(void);
-  void BackwardAndTurnRight(void);
   void TurnLeft(void);
   void TurnRight(void);
   void TurnLeft1(void);
@@ -27,12 +25,14 @@
   void Stop(void);
   float get_power(void);
   void lineFollower(void);
-
+  void getManualInstructions(void);
+  void driveCommands(int input);
+  void checkObstacle(void);
+  
 // VARIABLES
-int16_t moveSpeed = 100;
-int16_t moveSpeed_old = 0;
-
+int16_t moveSpeed = 180;
 int16_t auriga_power = 0;
+int input = 0;
 
 // DEFINES
 #define POWER_PORT  A4
@@ -40,7 +40,9 @@ int16_t auriga_power = 0;
 void setup()  // put your setup code here, to run once:
 {
   delay(5);
-  Serial.begin(9600);
+  Serial.begin(115200);
+  bluetooth.begin(115200);  //The factory default baud rate is 115200
+  Serial.println("Setup complete!");
   delay(5);
   attachInterrupt(Encoder_1.getIntNum(), isr_process_encoder1, RISING);
   attachInterrupt(Encoder_2.getIntNum(), isr_process_encoder2, RISING);  
@@ -55,7 +57,7 @@ void setup()  // put your setup code here, to run once:
   encoders[0].runSpeed(0);
   encoders[1].runSpeed(0);
   
-  //Set Pwm 8KHz
+  //Set PWM 8KHz
   TCCR1A = _BV(WGM10);
   TCCR1B = _BV(CS11) | _BV(WGM12);
 
@@ -68,9 +70,6 @@ void setup()  // put your setup code here, to run once:
   Encoder_2.setRatio(39.267);
   Encoder_1.setMotionMode(DIRECT_MODE);
   Encoder_2.setMotionMode(DIRECT_MODE);
-
-  Serial.println("Setup complete!");
-  Serial.println("Enter motorspeed to begin.");
 }
 
 /**
@@ -129,27 +128,7 @@ void Backward(void)
 
 /**
  * \par Description
- *    This function use to control the car kit go backward and turn left.
- */
-void BackwardAndTurnLeft(void)
-{
-  Encoder_1.setMotorPwm(moveSpeed/4);
-  Encoder_2.setMotorPwm(-moveSpeed);
-}
-
-/**
- * \par Description
- *    This function use to control the car kit go backward and turn right.
- */
-void BackwardAndTurnRight(void)
-{
-  Encoder_1.setMotorPwm(moveSpeed);
-  Encoder_2.setMotorPwm(-moveSpeed/4);
-}
-
-/**
- * \par Description
- *    This function use to control the car kit go backward and turn left.
+ *    This function use to control the car kit to turn left.
  */
 void TurnLeft(void)
 {
@@ -159,7 +138,7 @@ void TurnLeft(void)
 
 /**
  * \par Description
- *    This function use to control the car kit go backward and turn right.
+ *    This function use to control the car kit to turn right.
  */
 void TurnRight(void)
 {
@@ -171,7 +150,7 @@ void TurnRight(void)
  * \par Description
  *    This function use to control the car kit go backward and turn left(fast).
  */
-void TurnLeft1(void)
+void SpinLeft(void)
 {
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
@@ -181,7 +160,7 @@ void TurnLeft1(void)
  * \par Description
  *    This function use to control the car kit go backward and turn right(fast).
  */
-void TurnRight1(void)
+void SpinRight(void)
 {
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(moveSpeed);
@@ -210,7 +189,9 @@ float get_power(void)
   power = (auriga_power/1024.0) * 15;
   return power;
 }
-void checkObstacle(void){
+
+void checkObstacle(void)
+{
     /*Serial.print("Distance: ");
     Serial.print(ultraSensor.distanceCm());
     Serial.println(" cm");*/
@@ -222,10 +203,49 @@ void checkObstacle(void){
       
       Backward();
       delay(500);
-      TurnLeft1();
+      SpinLeft();
       delay(1750);
     }
 }
+
+void getManualInstructions(void)
+{
+  while(Serial.available() > 0)
+  {  
+    input = Serial.parseInt();
+    Serial.println(input);
+    int temp = Serial.parseInt();
+  }
+}
+
+void driveCommands(int input){
+  switch (input){
+      case 0:
+        Stop();
+        break;
+      case 1:
+        Forward();
+        break;
+      case 2:
+        TurnLeft();
+        break;
+      case 3:
+        TurnRight();
+        break;
+      case 4:
+        SpinLeft();
+        break;
+      case 5:
+        SpinRight();
+        break;
+      case 6:
+        Backward();
+        break;
+      default:
+        break;
+    }
+}
+
 void lineFollower(void){
   if((0?(3==0?line.readSensors()==0:(line.readSensors() & 3)==3):(3==0?line.readSensors()==3:(line.readSensors() & 3)==0))){
     //Serial.println("UTE"); // SENSORS IDENTIFIES THE BLACK LINE
@@ -243,13 +263,11 @@ void lineFollower(void){
 }
 void loop() // put your main code here, to run repeatedly:
 { 
-  /*while(Serial.available() > 0){  
-    moveSpeed = Serial.parseInt();
-    Serial.print("New Movespeed: "); Serial.println(moveSpeed);
-    int temp = Serial.parseInt();
-  }*/
-
-  checkObstacle();
-  lineFollower();
+  getManualInstructions();
+  //testBT();
+  driveCommands(input);
+  //checkObstacle();
+  //lineFollower();
+  Serial.println(get_power());
 
 }
