@@ -30,9 +30,9 @@
   void checkObstacle(void);
   
 // VARIABLES
-int16_t moveSpeed = 180;
+int16_t moveSpeed = 200;
 int16_t auriga_power = 0;
-int input = 0;
+byte inputArr[8] = {0};
 
 // DEFINES
 #define POWER_PORT  A4
@@ -41,7 +41,7 @@ void setup()  // put your setup code here, to run once:
 {
   delay(5);
   Serial.begin(115200);
-  bluetooth.begin(115200);  //The factory default baud rate is 115200
+  //bluetooth.begin(115200);  //The factory default baud rate is 115200
   Serial.println("Setup complete!");
   delay(5);
   attachInterrupt(Encoder_1.getIntNum(), isr_process_encoder1, RISING);
@@ -210,11 +210,13 @@ void checkObstacle(void)
 
 void getManualInstructions(void)
 {
+
   while(Serial.available() > 0)
   {  
-    input = Serial.parseInt();
-    Serial.println(input);
+    inputArr[0] = Serial.read();
+    Serial.println(inputArr[0]);
     int temp = Serial.parseInt();
+    delay(100);
   }
 }
 
@@ -253,7 +255,7 @@ void lineFollower(void){
 
     Backward();
     delay(500);
-    TurnLeft1();
+    SpinLeft();
     delay(500);
   }
   else{
@@ -264,10 +266,8 @@ void lineFollower(void){
 void loop() // put your main code here, to run repeatedly:
 { 
   getManualInstructions();
-  //testBT();
-  driveCommands(input);
+  driveCommands(inputArr[0]);
   //checkObstacle();
   //lineFollower();
-  Serial.println(get_power());
-
+  //Serial.println(get_power());
 }
