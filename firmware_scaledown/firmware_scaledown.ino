@@ -3,6 +3,7 @@
 #include <MeAuriga.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
+#include "Bluetooth.h"
 
 // DECLARATIONS
   MeBuzzer buzzer;
