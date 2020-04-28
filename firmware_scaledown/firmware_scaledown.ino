@@ -27,7 +27,8 @@
   void lineFollower(void);
   void getManualInstructions(void);
   void driveCommands(int input);
-  void checkObstacle(void);
+  bool checkObstacle(void);
+  void BluetoothSend(byte[]);
   
 // VARIABLES
 int16_t moveSpeed = 200;
@@ -190,7 +191,7 @@ float get_power(void)
   return power;
 }
 
-void checkObstacle(void)
+bool checkObstacle(void)
 {
     /*Serial.print("Distance: ");
     Serial.print(ultraSensor.distanceCm());
@@ -205,19 +206,29 @@ void checkObstacle(void)
       delay(500);
       SpinLeft();
       delay(1750);
+      return true;
+    }
+    else{
+      return false;
     }
 }
-
+//Takes commands from mobile app through bluetooth
 void getManualInstructions(void)
 {
-
   while(Serial.available() > 0)
   {  
     inputArr[0] = Serial.read();
     Serial.println(inputArr[0]);
     int temp = Serial.parseInt();
-    delay(100);
   }
+}
+void BluetoothSend(byte outputArr[])
+{
+  if(Serial.availableForWrite() == 8){
+      Serial.flush();
+      Serial.write(outputArr, 8); 
+  }
+
 }
 
 void driveCommands(int input){
@@ -265,9 +276,13 @@ void lineFollower(void){
 }
 void loop() // put your main code here, to run repeatedly:
 { 
+  
   getManualInstructions();
   driveCommands(inputArr[0]);
-  //checkObstacle();
+  
+ // if(checkObstacle() == true){
+    BluetoothSend(inputArr);
+ // }
   //lineFollower();
   //Serial.println(get_power());
 }
