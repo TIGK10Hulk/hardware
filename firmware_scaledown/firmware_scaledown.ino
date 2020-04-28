@@ -214,6 +214,7 @@ void getManualInstructions(void)
   while(Serial.available() > 0)
   {  
     inputArr[0] = Serial.read();
+    //inputArr[0] = Serial.parseInt();
     Serial.println(inputArr[0]);
     int temp = Serial.parseInt();
     delay(100);
@@ -267,7 +268,8 @@ void loop() // put your main code here, to run repeatedly:
 { 
   getManualInstructions();
   driveCommands(inputArr[0]);
+  inputArr[1] = get_power();
   //checkObstacle();
   //lineFollower();
-  //Serial.println(get_power());
+  Serial.println(inputArr[1]);
 }
