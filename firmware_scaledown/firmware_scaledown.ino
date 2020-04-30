@@ -28,6 +28,7 @@
   void getManualInstructions(void);
   void driveCommands(int input);
   void checkObstacle(void);
+  void updateCoords(void);
   
 // VARIABLES
 int16_t moveSpeed = 200;
@@ -263,6 +264,10 @@ void lineFollower(void){
     //Serial.println("INNE"); // SENSORS IDENTIFIES WHITE
     Forward();
   }
+}
+void updateCoords(void)
+{
+  
 }
 void loop() // put your main code here, to run repeatedly:
 { 
