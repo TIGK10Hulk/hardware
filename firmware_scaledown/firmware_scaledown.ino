@@ -25,15 +25,19 @@
   void Stop(void);
   float get_power(void);
   void lineFollower(void);
-  void getManualInstructions(void);
-  void driveCommands(int input);
+  void getBluetoothData(void);
+  bool getDriveState(void); //get drive state through inputArr[0]; Manual = true, auto = false
+  void getDriveCommand(void); //get motor state through inputArr[1];
+  void setDriveCommands(int input);
   void checkObstacle(void);
   void updateCoords(void);
+  void sendBluetoothData(void);
   
 // VARIABLES
-int16_t moveSpeed = 200;
+int16_t moveSpeed = 100;
 int16_t auriga_power = 0;
-byte inputArr[8] = {0};
+byte inputArr[2] = {0}; //BT input, 0 = manual/auto, 1 = drive commands, 2 = speed(0-255)
+byte outputArr[2] = {0}; //BT output, 0 = manual/auto, 1 = speed(0-255), 2 = coord state, 3 X-coord, 4 = Y-coord, 5 = power
 
 // DEFINES
 #define POWER_PORT  A4
@@ -208,21 +212,31 @@ void checkObstacle(void)
       delay(1750);
     }
 }
-
-void getManualInstructions(void)
+void getBluetoothData(void)
 {
-
+  while(Serial.available() > 0)
+  {
+    
+    for(int i = 0; i < 2; i++){
+      inputArr[i] = Serial.read();
+      Serial.print(inputArr[i]);
+      Serial.print(" ,");
+    }
+    Serial.println("");
+  }
+}
+void getDriveCommands(void)
+{
   while(Serial.available() > 0)
   {  
-    inputArr[0] = Serial.read();
-    //inputArr[0] = Serial.parseInt();
-    Serial.println(inputArr[0]);
+    inputArr[1] = Serial.read();
+    Serial.println(inputArr[1]);
     int temp = Serial.parseInt();
     delay(100);
   }
 }
 
-void driveCommands(int input){
+void setDriveCommands(int input){
   switch (input){
       case 0:
         Stop();
@@ -269,12 +283,40 @@ void updateCoords(void)
 {
   
 }
+void sendBluetoothData(void)
+{
+  while(Serial.available() > 0)
+  {
+    for(int i = 0; i < 3; i++){
+      inputArr[i] = Serial.read();
+      delay(100);
+    }
+    Serial.write(outputArr, 5);
+    delay(100);
+  }
+  
+}
 void loop() // put your main code here, to run repeatedly:
 { 
-  getManualInstructions();
-  driveCommands(inputArr[0]);
-  inputArr[1] = get_power();
-  //checkObstacle();
-  //lineFollower();
-  Serial.println(inputArr[1]);
+  sendBluetoothData();
+  //getBluetoothData(); //Update inputArr with new BT data
+  //getDriveCommands();
+  setDriveCommands(inputArr[1]);
+  //getDriveCommands();
+  if(inputArr[0] == 1){ //Manual mode
+    getDriveCommands();
+    setDriveCommands(inputArr[1]);
+  }
+  
+  
+  else if(inputArr[0] == 0){ //Auto mode
+    
+  }
+  else{ //this should never happen
+    //Serial.println("invalid state");
+  }
+  inputArr[0] = 1;
+  inputArr[1] = -2;
+  //inputArr[8] = get_power();
+ // Serial.println(0-inputArr[8]);
 }
