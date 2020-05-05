@@ -3,6 +3,7 @@
 #include <MeAuriga.h>
 #include <Wire.h>
 #include <SoftwareSerial.h>
+#include <math.h>
 
 // DECLARATIONS
   MeBuzzer buzzer;
@@ -12,6 +13,7 @@
   MeEncoderOnBoard Encoder_2(SLOT2);
   MeEncoderMotor encoders[2];
   MeBluetooth bluetooth(PORT_3);
+  MeGyro gyro (0,0x69);
 
 // FUNCTIONS
   void isr_process_encoder1(void);
@@ -30,14 +32,17 @@
   void getDriveCommand(void); //get motor state through inputArr[1];
   void setDriveCommands(int input);
   void checkObstacle(void);
-  void updateCoords(void);
   void sendBluetoothData(void);
+  void sendCoord(int, unsigned int);
   
 // VARIABLES
 int16_t moveSpeed = 100;
 int16_t auriga_power = 0;
+int16_t rampInterval = 750;
 byte inputArr[2] = {0}; //BT input, 0 = manual/auto, 1 = drive commands, 2 = speed(0-255)
-byte outputArr[2] = {0}; //BT output, 0 = manual/auto, 1 = speed(0-255), 2 = coord state, 3 X-coord, 4 = Y-coord, 5 = power
+byte outputArr[3] = {0}; //BT output, 0 = manual/auto, 1 = speed(0-255), 2 = coord state, 3 X-coord, 4 = Y-coord, 5 = power
+int16_t test = 0;
+unsigned long lastTime = 0;
 
 // DEFINES
 #define POWER_PORT  A4
@@ -46,6 +51,7 @@ void setup()  // put your setup code here, to run once:
 {
   delay(5);
   Serial.begin(115200);
+  gyro.begin();
   //bluetooth.begin(115200);  //The factory default baud rate is 115200
   Serial.println("Setup complete!");
   delay(5);
@@ -279,10 +285,6 @@ void lineFollower(void){
     Forward();
   }
 }
-void updateCoords(void)
-{
-  
-}
 void sendBluetoothData(void)
 {
   while(Serial.available() > 0)
@@ -296,9 +298,41 @@ void sendBluetoothData(void)
   }
   
 }
+void sendCoord(int protocol, unsigned int distance) //Send coordinates based on speed value and direction
+{
+  unsigned long currentTime = millis();
+  int interval = (distance/moveSpeed)*100; // distance is arbitrary value atm
+  gyro.update();
+  int X = distance*cos(gyro.getAngleZ());
+  int Y = distance*sin(gyro.getAngleZ());
+  if (currentTime-lastTime >= interval)
+  {
+    lastTime = currentTime;
+    outputArr[0] = gyro.getAngleZ();protocol;
+    outputArr[1] = X;
+    outputArr[2] = Y;
+    Serial.write(outputArr, 3);
+  }
+
+   
+}
 void loop() // put your main code here, to run repeatedly:
 { 
-  sendBluetoothData();
+//________________________________________________________
+ /* gyro.update();
+  Serial.read();
+  Serial.print("X:");
+  Serial.print(gyro.getAngleX() );
+  Serial.print(" Y:");
+  Serial.print(gyro.getAngleY() );
+  Serial.print(" Z:");
+  Serial.println(gyro.getAngleZ() );
+  delay(10);
+  int startPos = gyro.getAngleZ();*/
+//________________________________________________________
+
+  sendCoord(2, 1000);
+  //sendBluetoothData();
   //getBluetoothData(); //Update inputArr with new BT data
   //getDriveCommands();
   setDriveCommands(inputArr[1]);
