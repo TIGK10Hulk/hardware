@@ -43,6 +43,7 @@ byte inputArr[2] = {0}; //BT input, 0 = manual/auto, 1 = drive commands, 2 = spe
 byte outputArr[3] = {0}; //BT output, 0 = manual/auto, 1 = speed(0-255), 2 = coord state, 3 X-coord, 4 = Y-coord, 5 = power
 int16_t test = 0;
 unsigned long lastTime = 0;
+unsigned long secondTime = 0;
 
 // DEFINES
 #define POWER_PORT  A4
@@ -96,7 +97,7 @@ void isr_process_encoder1(void)
     Encoder_1.pulsePosMinus();
   }
   else{
-    Encoder_1.pulsePosPlus();;
+    Encoder_1.pulsePosPlus();
   }
 }
 
@@ -296,48 +297,59 @@ void sendBluetoothData(void)
     Serial.write(outputArr, 5);
     delay(100);
   }
-  
 }
 void sendCoord(int protocol, unsigned int distance) //Send coordinates based on speed value and direction
 {
   unsigned long currentTime = millis();
-  int interval = (distance/moveSpeed)*100; // distance is arbitrary value atm
-  gyro.update();
-  int X = distance*cos(gyro.getAngleZ());
-  int Y = distance*sin(gyro.getAngleZ());
+  int interval = (distance/moveSpeed)*1000; // distance is arbitrary value atm
+   
   if (currentTime-lastTime >= interval)
   {
+    gyro.update();
+    double angle = (gyro.getAngleZ());
+    double Y = distance*cos(angle);
+    double X = distance*sin(angle);
+    
     lastTime = currentTime;
-    outputArr[0] = gyro.getAngleZ();protocol;
-    outputArr[1] = X;
-    outputArr[2] = Y;
-    Serial.write(outputArr, 3);
+    outputArr[0] = X;
+    outputArr[1] = Y;
+   // Serial.write(outputArr, 2);
+    Serial.print(angle);
+    Serial.print(", ");
+    Serial.print(X);
+    Serial.print(", ");
+    Serial.print(Y);
+    Serial.println("");
+    /*Serial.print(distance);
+    Serial.print(", ");
+    Serial.print(moveSpeed);
+    Serial.print(", ");
+    Serial.print(gyro.getAngleZ());
+    Serial.print(", ");
+    Serial.print(X);
+    Serial.print(", ");
+    Serial.print(Y);
+    Serial.print(", ");
+    Serial.println("");*/
   }
 
    
 }
 void loop() // put your main code here, to run repeatedly:
 { 
-//________________________________________________________
- /* gyro.update();
-  Serial.read();
-  Serial.print("X:");
-  Serial.print(gyro.getAngleX() );
-  Serial.print(" Y:");
-  Serial.print(gyro.getAngleY() );
-  Serial.print(" Z:");
-  Serial.println(gyro.getAngleZ() );
-  delay(10);
-  int startPos = gyro.getAngleZ();*/
-//________________________________________________________
-
-  sendCoord(2, 1000);
+  unsigned long currentTime = millis();
+  int interv = 5000;
+  if (currentTime-secondTime >= interv)
+  {
+    gyro.update();
+  }
+  
   //sendBluetoothData();
   //getBluetoothData(); //Update inputArr with new BT data
   //getDriveCommands();
-  setDriveCommands(inputArr[1]);
-  //getDriveCommands();
-  if(inputArr[0] == 1){ //Manual mode
+  //setDriveCommands(inputArr[1]);
+  sendCoord(2, 100);
+  /*if(inputArr[0] == 1){ //Manual mode
     getDriveCommands();
     setDriveCommands(inputArr[1]);
   }
@@ -348,9 +360,7 @@ void loop() // put your main code here, to run repeatedly:
   }
   else{ //this should never happen
     //Serial.println("invalid state");
-  }
-  inputArr[0] = 1;
-  inputArr[1] = -2;
+  }*/
   //inputArr[8] = get_power();
  // Serial.println(0-inputArr[8]);
 }
