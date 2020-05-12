@@ -34,6 +34,8 @@
   void checkObstacle(void);
   void sendBluetoothData(void);
   void sendCoord(int, unsigned int);
+  void angleCalculation(void);
+  void randomLeftOrRight(int16_t delayInput);
   
 // VARIABLES
 int16_t moveSpeed = 100;
@@ -44,6 +46,8 @@ byte outputArr[3] = {0}; //BT output, 0 = manual/auto, 1 = speed(0-255), 2 = coo
 int16_t test = 0;
 unsigned long lastTime = 0;
 unsigned long secondTime = 0;
+int16_t randomNumber = 0;
+int deltaAngle = 0, newAngle = 0, tempAngle = 0;
 
 // DEFINES
 #define POWER_PORT  A4
@@ -140,26 +144,6 @@ void Backward(void)
 
 /**
  * \par Description
- *    This function use to control the car kit to turn left.
- */
-void TurnLeft(void)
-{
-  Encoder_1.setMotorPwm(-moveSpeed);
-  Encoder_2.setMotorPwm(moveSpeed/2);
-}
-
-/**
- * \par Description
- *    This function use to control the car kit to turn right.
- */
-void TurnRight(void)
-{
-  Encoder_1.setMotorPwm(-moveSpeed/2);
-  Encoder_2.setMotorPwm(moveSpeed);
-}
-
-/**
- * \par Description
  *    This function use to control the car kit go backward and turn left(fast).
  */
 void SpinLeft(void)
@@ -211,14 +195,12 @@ void checkObstacle(void)
 
     if(ultraSensor.distanceCm() < 5){
       Stop();
-      buzzer.tone(262, 0.25 * 1000);
-      
       Backward();
       delay(500);
-      SpinLeft();
-      delay(1750);
+      randomLeftOrRight(1750); // turn for 1750ms
     }
 }
+
 void getBluetoothData(void)
 {
   while(Serial.available() > 0)
@@ -232,6 +214,7 @@ void getBluetoothData(void)
     Serial.println("");
   }
 }
+
 void getDriveCommands(void)
 {
   while(Serial.available() > 0)
@@ -252,18 +235,12 @@ void setDriveCommands(int input){
         Forward();
         break;
       case 2:
-        TurnLeft();
-        break;
-      case 3:
-        TurnRight();
-        break;
-      case 4:
         SpinLeft();
         break;
-      case 5:
+      case 3:
         SpinRight();
         break;
-      case 6:
+      case 4:
         Backward();
         break;
       default:
@@ -278,14 +255,14 @@ void lineFollower(void){
 
     Backward();
     delay(500);
-    SpinLeft();
-    delay(500);
+    randomLeftOrRight(500); // turns left or right for 500 ms
   }
   else{
     //Serial.println("INNE"); // SENSORS IDENTIFIES WHITE
     Forward();
   }
 }
+
 void sendBluetoothData(void)
 {
   while(Serial.available() > 0)
@@ -298,6 +275,7 @@ void sendBluetoothData(void)
     delay(100);
   }
 }
+
 void sendCoord(int protocol, unsigned int distance) //Send coordinates based on speed value and direction
 {
   unsigned long currentTime = millis();
@@ -320,21 +298,54 @@ void sendCoord(int protocol, unsigned int distance) //Send coordinates based on 
     Serial.print(", ");
     Serial.print(Y);
     Serial.println("");
-    /*Serial.print(distance);
-    Serial.print(", ");
-    Serial.print(moveSpeed);
-    Serial.print(", ");
-    Serial.print(gyro.getAngleZ());
-    Serial.print(", ");
-    Serial.print(X);
-    Serial.print(", ");
-    Serial.print(Y);
-    Serial.print(", ");
-    Serial.println("");*/
   }
-
-   
 }
+
+void angleCalculation(void)
+{
+  if(inputArr[1] == 2 && inputArr[1] == 3)
+  {
+    // save temporary angle
+    tempAngle = gyro.getAngleZ();
+    Serial.print("tempAngle: ");
+    Serial.print(tempAngle);
+    Serial.println("");
+    
+    // Turn
+    randomLeftOrRight(500);
+    
+    //Get new gyro angle
+    gyro.update();
+    newAngle = gyro.getAngleZ();
+    Serial.print("newAngle: ");
+    Serial.print(newAngle);
+    Serial.println("");
+    
+    deltaAngle = newAngle - tempAngle;
+    Serial.print("dAngle: ");
+    Serial.print(deltaAngle);
+    Serial.println("");
+  }
+  gyro.resetZ();
+  Serial.print("getAngleZ: ");
+  Serial.print(gyro.getAngleZ());
+  Serial.println("");
+}
+
+// delayInput decides the active turn time, the longer the delay the longer it will rotate
+void randomLeftOrRight(int16_t delayInput)
+{
+  randomNumber = random(0, 20);
+  if(randomNumber < 10){
+    SpinLeft();
+    delay(delayInput);
+  }
+  else{
+    SpinRight();
+    delay(delayInput);  
+  }
+}
+
 void loop() // put your main code here, to run repeatedly:
 { 
   unsigned long currentTime = millis();
@@ -342,21 +353,20 @@ void loop() // put your main code here, to run repeatedly:
   if (currentTime-secondTime >= interv)
   {
     gyro.update();
+    angleCalculation();
   }
   
   //sendBluetoothData();
   //getBluetoothData(); //Update inputArr with new BT data
   //getDriveCommands();
   //setDriveCommands(inputArr[1]);
-  sendCoord(2, 100);
+  //sendCoord(2, 100);
   /*if(inputArr[0] == 1){ //Manual mode
     getDriveCommands();
     setDriveCommands(inputArr[1]);
   }
-  
-  
   else if(inputArr[0] == 0){ //Auto mode
-    
+   
   }
   else{ //this should never happen
     //Serial.println("invalid state");
