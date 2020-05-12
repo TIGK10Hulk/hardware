@@ -54,7 +54,7 @@ double totalAngle = 0, newAngle = 0;
 int X = 0, Y = 0;
 int distance = 0;
 
-unsigned long currentTime = 0;
+unsigned long deltaTime = 0, oldTime = 0, newTime = 0;
 
 // DEFINES
 #define POWER_PORT  A4
@@ -299,7 +299,7 @@ void angleCalculation(void)
   //Get new gyro angle
   gyro.update();
   newAngle = gyro.getAngleZ();
-  totalAngle = (totalAngle + newAngle) % 360;
+  totalAngle = modf((totalAngle + newAngle), 360);
 }
 
 void calculateCoords(int distance)
@@ -324,11 +324,14 @@ void randomLeftOrRight(int16_t delayInput)
 
 void loop() // put your main code here, to run repeatedly:
 { 
+  oldTime = millis();
   sendBluetoothData();
   getBluetoothData(); //Update inputArr with new BT data
+
+  newTime = millis();
+  deltaTime = newTime - oldTime;
   
-  currentTime = millis();
-  distance = moveSpeed * currentTime;
+  distance = moveSpeed * deltaTime;
   setDriveCommands(inputArr[1]);
   /*
   if(inputArr[1] == 2 || inputArr[1] == 3)
