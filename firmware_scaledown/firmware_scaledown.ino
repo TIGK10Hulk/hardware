@@ -31,14 +31,14 @@
   bool getDriveState(void); //get drive state through inputArr[0]; Manual = true, auto = false
   void setManualDriveCommands(int input);
   void checkObstacle(void);
-  void sendBluetoothData(int protocol, int data1, int data2);
+  void sendBluetoothData(float protocol, float data1, float data2);
   void sendCoord(int, unsigned int);
   void angleCalculation(void);
-  void calculateCoords(int distance);
+  void calculateCoords(float distance);
   void randomLeftOrRight(int16_t delayInput);
   
 // VARIABLES
-int16_t moveSpeed = 100;
+int16_t moveSpeed = 150; // 100 = 0.214m/s, 200 = 0.43m/s
 int16_t auriga_power = 0;
 int16_t rampInterval = 750;
 byte inputArr[2] = {0}; //BT input, 0 = manual/auto, 1 = drive commands, 2 = speed(0-255)
@@ -49,9 +49,9 @@ unsigned long secondTime = 0;
 
 int16_t randomNumber = 0;
 
-int totalAngle = 0, newAngle = 0;
-int X = 0, Y = 0;
-int distance = 0;
+float totalAngle = 0, newAngle = 0;
+float X = 0, Y = 0;
+float distance = 0;
 
 int oldInput = 9;
 
@@ -136,11 +136,11 @@ void isr_process_encoder2(void)
  */
 void Forward(void)
 {
-  angleCalculation();
+ 
   deltaTime = stopTime - startTime;
-  distance = deltaTime*moveSpeed;
+  distance = (deltaTime/1000.0)*(moveSpeed*0.215);
   calculateCoords(distance);
-    
+  gyro.begin();
   startTime = millis();
   
   Encoder_1.setMotorPwm(-moveSpeed);
@@ -193,9 +193,8 @@ void Stop(void)
 
   stopTime = millis();
   deltaTime = stopTime - startTime;
-  distance = deltaTime*moveSpeed;
+  distance = (deltaTime/1000.0)*(moveSpeed*0.215); //convert arbitrary moveSpeed to cm/s and millis to seconds
   calculateCoords(distance);
-  gyro.begin();  // Set gyro to 0
   
 }
 
@@ -209,7 +208,7 @@ float get_power(void)
 {
   float power;
   auriga_power = analogRead(POWER_PORT);
-  power = (auriga_power/1024.0) * 15;
+  power = (auriga_power/1024.0) * 15.0;
   return power;
 }
 
@@ -254,10 +253,12 @@ void setManualDriveCommands(int input){
           oldInput = 1;
           break;
         case 2:
+          Stop();
           SpinLeft();
           oldInput = 2;
           break;
         case 3:
+          Stop();
           SpinRight();
           oldInput = 3;    
           break;
@@ -309,7 +310,7 @@ void lineFollower(void){
   }
 }
 
-void sendBluetoothData(int protocol, int data1, int data2)
+void sendBluetoothData(float protocol, float data1, float data2)
 {
   outputArr[0] = protocol;
   outputArr[1] = data1;
@@ -323,14 +324,15 @@ void angleCalculation(void)
 {
   //Get new gyro angle
   gyro.update();
-  newAngle = gyro.getAngleZ();
+  newAngle = gyro.getAngleZ()*(-1.0);
   totalAngle = modf((totalAngle + newAngle), 360);
 }
 
-void calculateCoords(int distance)
+void calculateCoords(float distance)
 {
-  X = distance*cos(totalAngle);
-  Y = distance*sin(totalAngle);
+  angleCalculation();
+  X = distance*cosf(((totalAngle)*71.0)/4068.0);
+  Y = 1000*distance*sinf(((totalAngle)*71.0)/4068.0);
   sendBluetoothData(2, X, Y);
 }
 
