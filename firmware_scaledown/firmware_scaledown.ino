@@ -1,6 +1,8 @@
 // INCLUDES
 #include <Arduino.h>
-#include "includes\MeAuriga.h"
+#include <MeAuriga.h>
+#include <SoftwareSerial.h>
+#include <Wire.h>
 #include <math.h>
 
 // DECLARATIONS
@@ -161,7 +163,7 @@ void Backward(void)
 void SpinLeft(void)
 {
   //reset gyro
-  gyro.begin();
+  gyro.resetZ();
   Encoder_1.setMotorPwm(-moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
 }
