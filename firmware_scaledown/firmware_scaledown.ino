@@ -54,7 +54,8 @@ double distance = 0;
 int oldInput = 9;
 
 unsigned long deltaTime = 0, startTime = 0, stopTime = 0;
-bool isMoving = false;
+bool isMovingForward = false;
+bool isMovingBackward = false;
 
 // DEFINES
 #define POWER_PORT  A4
@@ -136,7 +137,7 @@ void isr_process_encoder2(void)
 void Forward(void)
 {
   //Set isMoving to true
-  isMoving = true;
+  isMovingForward = true;
   //Start measuring time interval
   startTime = millis();
   //Calculate angle
@@ -152,6 +153,13 @@ void Forward(void)
  */
 void Backward(void)
 {
+  //Set isMoving to true
+  isMovingBackward = true;
+  //Start measuring time interval
+  startTime = millis();
+  //Calculate angle
+  angleCalculation();
+  
   Encoder_1.setMotorPwm(moveSpeed);
   Encoder_2.setMotorPwm(-moveSpeed);
 }
@@ -189,9 +197,8 @@ void Stop(void)
   Encoder_1.setMotorPwm(0);
   Encoder_2.setMotorPwm(0);
   //If prevStartTime = startTime then return
-  if(isMoving != true)
+  if(isMovingForward != true || isMovingBackward != true)
   {
-    isMoving = false;
     return;   
   }
   else
@@ -204,7 +211,8 @@ void Stop(void)
     distance = (deltaTime/1000.0)*(moveSpeed*0.215);
     //Calculate coordinates
     calculateCoords(distance);
-    isMoving = false;
+    isMovingForward = false;
+    isMovingBackward = false;
   }
 }
 
@@ -344,7 +352,7 @@ void angleCalculation(void)
     newAngle = newAngle+360;
   }
   //Add angle value to total angle, this to keep track of origo
-  totalAngle = totalAngle + newAngle;
+  totalAngle = totalAngle - newAngle;
 }
 
 void calculateCoords(double distance)
@@ -353,8 +361,17 @@ void calculateCoords(double distance)
   X = distance*cos(((totalAngle)*71.0)/4068.0);
   //Calculate Y by using sinf and converting degrees to rads
   Y = distance*sin(((totalAngle)*71.0)/4068.0);
-  //Send X and Y values
-  sendBluetoothData(2, X, Y);
+  
+  if(isMovingForward == true && isMovingBackward == false)
+  {
+    //Send positive (forwards) X and Y values
+    sendBluetoothData(2, X, Y);
+  }
+  else if(isMovingBackward == true && isMovingBackward == true)
+  {
+    //Send negative (backwards) X and Y values
+    sendBluetoothData(2, -X, -Y);
+  }
 }
 
 // delayInput decides the active turn time, the longer the delay the longer it will rotate
