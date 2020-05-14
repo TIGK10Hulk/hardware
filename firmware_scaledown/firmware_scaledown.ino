@@ -5,6 +5,8 @@
 #include <SoftwareSerial.h>
 #include <math.h>
 
+#include "includes\MeGyro_Hulk.h"
+
 // DECLARATIONS
   MeBuzzer buzzer;
   MeUltrasonicSensor ultraSensor(PORT_10);
