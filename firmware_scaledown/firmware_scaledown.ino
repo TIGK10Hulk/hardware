@@ -5,6 +5,12 @@
 #include <Wire.h>
 #include <math.h>
 
+#define STOP      0
+#define FORWARD   1
+#define SPINLEFT  2
+#define SPINRIGHT 3
+#define BACKWARD  4
+
 // DECLARATIONS
   MeBuzzer buzzer;
   MeUltrasonicSensor ultraSensor(PORT_10);
@@ -260,11 +266,13 @@ void CollisionCheck(void)
     deltaTime = stopTime - startTime;
     //Calculate distance with time interval, convert arbitrary moveSpeed to cm/s and millis to seconds
     distance = (deltaTime/1000.0)*(moveSpeed*0.215);
-    //Calculate coordinates
-    calculateCoords(distance);
+
     isMovingForward = false;
     isMovingBackward = false;
     collision = true;
+    
+    //Calculate coordinates
+    calculateCoords(distance);
   }
 }
 
@@ -274,8 +282,8 @@ void checkObstacle(void)
     if(ultraSensor.distanceCm() < 5)
     {
       collision = true;
-      Stop();
-      Backward();
+      setDriveCommands(STOP);
+      setDriveCommands(BACKWARD);
       delay(500);
       randomLeftOrRight(1750); // turn for 1750ms
     }
@@ -299,27 +307,27 @@ void setDriveCommands(int input){
   else
   {
     switch (input){
-        case 0:
+        case STOP:
           Stop();
-          oldInput = 0;        
+          oldInput = STOP;        
           break;
-        case 1:
+        case FORWARD:
           Forward();
-          oldInput = 1;
+          oldInput = FORWARD;
           break;
-        case 2:
+        case SPINLEFT:
           Stop();
           SpinLeft();
-          oldInput = 2;
+          oldInput = SPINLEFT;
           break;
-        case 3:
+        case SPINRIGHT:
           Stop();
           SpinRight();
-          oldInput = 3;    
+          oldInput = SPINRIGHT;    
           break;
-        case 4:
+        case BACKWARD:
           Backward();
-          oldInput = 4;
+          oldInput = BACKWARD;
           break;
         default:
           break;
@@ -331,12 +339,12 @@ void lineFollower(void){
   if((0?(3==0?line.readSensors()==0:(line.readSensors() & 3)==3):(3==0?line.readSensors()==3:(line.readSensors() & 3)==0))){
     Stop();
     int randomDelay = random(200, 1000);
-    Backward();
+    setDriveCommands(BACKWARD);
     delay(500);
     randomLeftOrRight(randomDelay); // turns left or right for value between 200 and 1000 ms
   }
   else{
-    Forward();
+    setDriveCommands(FORWARD);
   }
 }
 
@@ -399,11 +407,11 @@ void randomLeftOrRight(int16_t delayInput)
 {
   randomNumber = random(0, 20);
   if(randomNumber < 10){
-    SpinLeft();
+    setDriveCommands(SPINLEFT);
     delay(delayInput);
   }
   else{
-    SpinRight();
+    setDriveCommands(SPINRIGHT);
     delay(delayInput);  
   }
 }
