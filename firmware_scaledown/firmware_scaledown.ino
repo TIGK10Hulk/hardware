@@ -37,7 +37,7 @@
   bool getDriveState(void); //get drive state through inputArr[0]; Manual = true, auto = false
   void setDriveCommands(int input);
   void checkObstacle(void);
-  void sendBluetoothData(double protocol, double data1, double data2);
+  void sendBluetoothData(double protocol, double data1, double data2, boolean collision);
   void sendCoord(int, unsigned int);
   void angleCalculation(void);
   void calculateCoords(double distance);
@@ -45,15 +45,6 @@
   void CollisionCheck(void);
   
 // VARIABLES
-typedef enum {
-  state_IDLE,
-  state_RUNNING_MANUAL,
-  state_RUNNING_AUTO,
-  state_AVOID
-} states;
-
-states State;
-
 int16_t moveSpeed = 150; // 100 = 0.214m/s, 200 = 0.43m/s
 int16_t auriga_power = 0;
 int16_t rampInterval = 750;
@@ -110,8 +101,6 @@ void setup()  // put your setup code here, to run once:
   Encoder_2.setRatio(39.267);
   Encoder_1.setMotionMode(DIRECT_MODE);
   Encoder_2.setMotionMode(DIRECT_MODE);
-
-  State = state_IDLE;
 }
 
 /**
@@ -250,43 +239,23 @@ double get_power(void)
 
 void CollisionCheck(void)
 {
-  Encoder_1.setMotorPwm(0);
-  Encoder_2.setMotorPwm(0);
-  //If prevStartTime = startTime then return
   if(collision == false)
   {
     checkObstacle();
-    return;   
-  }
-  else
-  {
-    //Stop measuring time interval
-    stopTime = millis();
-    //Calculate time interval
-    deltaTime = stopTime - startTime;
-    //Calculate distance with time interval, convert arbitrary moveSpeed to cm/s and millis to seconds
-    distance = (deltaTime/1000.0)*(moveSpeed*0.215);
-
-    isMovingForward = false;
-    isMovingBackward = false;
-    collision = true;
-    
-    //Calculate coordinates
-    calculateCoords(distance);
   }
 }
 
 void checkObstacle(void)
 {
-    delay(100);
-    if(ultraSensor.distanceCm() < 5)
-    {
-      collision = true;
-      setDriveCommands(STOP);
-      setDriveCommands(BACKWARD);
-      delay(500);
-      randomLeftOrRight(1750); // turn for 1750ms
-    }
+  if(ultraSensor.distanceCm() < 5)
+  {
+    collision = true;
+    setDriveCommands(STOP);
+    setDriveCommands(BACKWARD);
+    delay(300);
+    randomLeftOrRight(300); // turn for 300ms
+  }
+  collision = false;
 }
 
 void getBluetoothData(void)
@@ -336,26 +305,40 @@ void setDriveCommands(int input){
 }
 
 void lineFollower(void){
-  if((0?(3==0?line.readSensors()==0:(line.readSensors() & 3)==3):(3==0?line.readSensors()==3:(line.readSensors() & 3)==0))){
-    Stop();
-    int randomDelay = random(200, 1000);
-    setDriveCommands(BACKWARD);
-    delay(500);
-    randomLeftOrRight(randomDelay); // turns left or right for value between 200 and 1000 ms
-  }
-  else{
-    setDriveCommands(FORWARD);
+  uint8_t val;
+  val = line.readSensors();
+  switch(val){
+     case S1_IN_S2_IN:
+      setDriveCommands(STOP);
+      setDriveCommands(BACKWARD);
+      delay(300);
+      setDriveCommands(SPINLEFT);
+      delay(250);
+      break;
+
+    case S1_IN_S2_OUT:
+      setDriveCommands(FORWARD);
+      break;
+
+    case S1_OUT_S2_IN:
+      setDriveCommands(FORWARD);
+      break;
+
+    case S1_OUT_S2_OUT:
+      setDriveCommands(FORWARD);
+      break;
   }
 }
 
-void sendBluetoothData(double protocol, double data1, double data2)
+void sendBluetoothData(double protocol, double data1, double data2, boolean collision)
 {
   //Fill outputArr with data
   outputArr[0] = protocol;
   outputArr[1] = data1;
   outputArr[2] = data2;
+  outputArr[3] = collision;
   //Send outputArr over bluetooth
-  Serial.write(outputArr, 3);
+  Serial.write(outputArr, 4);
 }
 
 void angleCalculation(void)
@@ -383,22 +366,12 @@ void calculateCoords(double distance)
   if(isMovingForward == true && isMovingBackward == false)
   {
     //Send positive (forwards) X and Y values
-    if(collision == true){
-      sendBluetoothData(3, X, Y);
-    }
-    else{
-      sendBluetoothData(2, X, Y);
-    }
+    sendBluetoothData(2, X, Y, collision);
   }
   else if(isMovingBackward == true && isMovingBackward == true)
   {
     //Send negative (backwards) X and Y values
-    if(collision == true){
-      sendBluetoothData(3, -X, -Y);
-    }
-    else{
-      sendBluetoothData(2, -X, -Y);
-    }
+    sendBluetoothData(2, -X, -Y, collision);
   }
 }
 
@@ -425,13 +398,14 @@ void loop() // put your main code here, to run repeatedly:
   {
     case 0:
         if(inputArr[1] == 0){
+          setDriveCommands(STOP);
           break;
         }
         else if(inputArr[1] == 1){
           CollisionCheck();
           lineFollower();
-        }
-        break;
+          break;
+        }       
     case 1:
         setDriveCommands(inputArr[1]);
         break;
